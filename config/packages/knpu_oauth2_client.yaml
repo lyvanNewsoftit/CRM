@@ -1,0 +1,12 @@
+#knpuniversity_oauth2_client:
+#  clients:
+#    office365:
+#      type: azure
+#      client_id: '%env(OAUTH_AZURE_CLIENT_ID)%'
+#      client_secret: '%env(OAUTH_AZURE_CLIENT_SECRET)%'
+#      #redirect_route: microsoft_oauth_callback
+#      redirect_route: connect_azure_check
+#      redirect_params: {}
+#      options:
+#        tenant: 'common' # Vous pouvez le remplacer par un tenant spécifique si nécessaire
+#        scope: ['openid', 'profile', 'User.Read'] # Ajoutez d'autres scopes si nécessaire
