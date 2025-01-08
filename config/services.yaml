@@ -22,3 +22,21 @@ services:
 
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones
+
+    # Azure OAuth Service declaration
+    #This service must have 3 arguments: clientId, clientSecret & redirectUri
+    #These arguments are defined in .env.dev & .env.prod
+
+    App\Security\Hasher\Sha256PasswordHasher:
+        tags:
+            - { name: security.user_password_hasher, alias: sha256 }
+    App\Security\CustomAuthenticator:
+        arguments:
+            $userProvider: '@security.user.provider.concrete.user_provider'
+            $passwordEncoder: '@security.password_hasher'
+#    App\Controller\Auth\Services\AzureOAuthService:
+#        public: true
+#        arguments:
+#            $azureClientId: '%env(AZURE_OAUTH_CLIENT_ID)%'
+#            $azureClientSecret: '%env(AZURE_OAUTH_CLIENT_SECRET)%'
+#            $azureRedirectUri: '%env(AZURE_REDIRECT_URI)%'
