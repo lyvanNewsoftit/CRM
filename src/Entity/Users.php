@@ -39,6 +39,12 @@ class Users implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column]
     private ?\DateTimeImmutable $createdAt = null;
 
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $resetPasswordToken = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $resetPasswordTokenExpiration = null;
+
     public function __construct(){
         $this->setCreatedAt(new \DateTimeImmutable());
     }
@@ -128,5 +134,29 @@ class Users implements UserInterface, PasswordAuthenticatedUserInterface
     public function getUserIdentifier(): string
     {
         return $this->email;
+    }
+
+    public function getResetPasswordToken(): ?string
+    {
+        return $this->resetPasswordToken;
+    }
+
+    public function setResetPasswordToken(?string $resetPasswordToken): static
+    {
+        $this->resetPasswordToken = $resetPasswordToken;
+
+        return $this;
+    }
+
+    public function getResetPasswordTokenExpiration(): ?\DateTimeImmutable
+    {
+        return $this->resetPasswordTokenExpiration;
+    }
+
+    public function setResetPasswordTokenExpiration(?\DateTimeImmutable $resetPasswordTokenExpiration): static
+    {
+        $this->resetPasswordTokenExpiration = $resetPasswordTokenExpiration;
+
+        return $this;
     }
 }

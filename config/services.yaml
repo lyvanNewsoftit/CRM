@@ -34,6 +34,16 @@ services:
         arguments:
             $userProvider: '@security.user.provider.concrete.user_provider'
             $passwordEncoder: '@security.password_hasher'
+
+    App\EventSubscriber\RemoveExpiredTokenSubscriber:
+        arguments:
+            $jwtManager: '@lexik_jwt_authentication.jwt_manager'
+        tags:
+            - { name: 'kernel.event_subscriber' }
+    lcobucci.jwt.decoder:
+        class: lcobucci\JWT\Decoder\Decoder
+        public: true
+
 #    App\Controller\Auth\Services\AzureOAuthService:
 #        public: true
 #        arguments:

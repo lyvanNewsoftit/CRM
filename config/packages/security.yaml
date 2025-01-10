@@ -26,6 +26,15 @@ security:
         dev:
             pattern: ^/(_(profiler|wdt)|css|images|js)/
             security: false
+        api:
+            pattern: ^/nsit-api
+            stateless: true
+            provider: user_provider
+            entry_point: jwt
+            jwt: ~
+            refresh_jwt:
+                check_path: /nsit-api/token/refresh
+
         main:
             lazy: true
             provider: users_in_memory
@@ -39,8 +48,11 @@ security:
     # Easy way to control access for large sections of your site
     # Note: Only the *first* access control that matches will be used
     access_control:
+        - { path: ^/nsit-api/reset-password, roles: PUBLIC_ACCESS }
+        - { path: ^/nsit-api/new-password, roles: PUBLIC_ACCESS }
         - { path: ^/nsit-api/login_check, roles: IS_AUTHENTICATED_ANONYMOUSLY }
-        - { path: ^/nsit-api/users, roles: PUBLIC_ACCESS}
+        - { path: ^/nsit-api/auth, roles: PUBLIC_ACCESS}
+        - { path: ^/nsit-api/users, roles: PUBLIC_ACCESS, methods: [POST]}
         - { path: ^/nsit-api,       roles: IS_AUTHENTICATED_FULLY }
 
 when@test:
