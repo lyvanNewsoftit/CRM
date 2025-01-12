@@ -1,9 +1,15 @@
 # see https://symfony.com/doc/current/reference/configuration/framework.html
 framework:
     secret: '%env(APP_SECRET)%'
-
     # Note that the session will be started ONLY if you read or write from it.
-    session: true
+    session:
+        # Utilisation du cookie sécurisé, HttpOnly et SameSite, configuré plus bas
+        cookie_secure: auto  # 'auto' signifie uniquement en HTTPS
+        cookie_httponly: true  # Cookie HttpOnly
+        cookie_samesite: 'none'  # Permet les cookies entre différents domaines (utile pour le frontend séparé)
+        name: PHPSESSID  # Nom du cookie de session
+        #cookie_lifetime: 3600  # Durée de vie du cookie en secondes (ex. 1 heure) si désactivé la session expire à la fermeture du navigateur
+
 
     #esi: true
     #fragments: true

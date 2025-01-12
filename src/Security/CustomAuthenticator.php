@@ -82,6 +82,7 @@ class CustomAuthenticator extends AbstractAuthenticator
 
         // Get the authenticated User
         $user = $token->getUser();
+        $rememberMe = $request->getPayload()->get('rememberMe');
 
         if (!$user) {
             return new JsonResponse([
@@ -92,33 +93,42 @@ class CustomAuthenticator extends AbstractAuthenticator
 
         // generate the token with the custom service JwtTokenService
         $jwt = $this->jwtTokenService->generateToken($user);
-        $refreshToken = $this->refreshTokenGenerator->createForUserWithTtl(
-            $user,
-            3600 * 24 * 3 // durée de vie du refresh token 3 jours
-        );
+// Initialisation des cookies
+        $refreshTokenCookie = null;
 
-        // Sauvegarde du refresh token en base
-        $this->entityManager->persist($refreshToken);
-        $this->entityManager->flush();
+        if ($rememberMe) {
 
-        // Création du cookie HTTP-only pour le refresh token
-        $refreshTokenCookie = Cookie::create(
-            'refresh_token', // Nom du cookie
-            $refreshToken->getRefreshToken(), // Valeur
-            time() + (3600 * 24 * 7), // Expiration : 7 jours
-            '/', // Path
-            null, // Domaine (null pour par défaut)
-            true, // Secure : HTTPS uniquement
-     true,
-            false, // Raw
-            Cookie::SAMESITE_NONE// SameSite policy
-        );
+            $refreshToken = $this->refreshTokenGenerator->createForUserWithTtl(
+                $user,
+                time() + (3600 * 24 * 3)// durée de vie du refresh token 3 jours
+            );
+
+            // Sauvegarde du refresh token en base
+            $this->entityManager->persist($refreshToken);
+            $this->entityManager->flush();
+
+            // Création du cookie HTTP-only pour le refresh token
+            $refreshTokenCookie = Cookie::create(
+                'refresh_token', // Nom du cookie
+                $refreshToken->getRefreshToken(), // Valeur
+                time() + (3600 * 24 * 3), // Expiration : 3 jours
+                '/', // Path
+                null, // Domaine (null pour par défaut)
+                true, // Secure : HTTPS uniquement
+                true,
+                false, // Raw
+                Cookie::SAMESITE_NONE// SameSite policy
+            );
+
+
+        }
+
 
         // création du cookie http only pour le token
         $jwtCookie = Cookie::create(
             'access_token', // Nom du cookie
             $jwt, // Valeur du JWT
-            time() + 3600, // Expiration : 1 heure (3600 secondes)
+            time() + (3600 * 2), // expiration 1heure: 3600 * 2 par rapport à lheure utc qui est en décalage de 1H
             '/', // Path
             null, // Domaine (null pour par défaut)
             true, // Secure : HTTPS uniquement
@@ -127,19 +137,27 @@ class CustomAuthenticator extends AbstractAuthenticator
             Cookie::SAMESITE_NONE // SameSite policy
         );
 
-
         // JSON Response with the token.
         $response = new JsonResponse([
             'success' => true,
-//            'token' => $jwt,
-//            'refresh_token' => $refreshToken->getRefreshToken(),
+            //'token' => $jwt,
+            // 'refresh_token' => $refreshToken->getRefreshToken(),
         ], Response::HTTP_OK);
 
-        $response->headers->setCookie($refreshTokenCookie);
+        if ($refreshTokenCookie) {
+            $response->headers->setCookie($refreshTokenCookie);
+        }
+
         $response->headers->setCookie($jwtCookie);
 
-        return $response;
+        // Créer une session pour y stocker le User ainsi que son refresh token pour pouvoir le retrouver lors de son expéritation et le supprimer de la base.
+        $session = $request->getSession();
+        $session->set('user', $user);
 
+        if ($refreshTokenCookie) {
+            $session->set('refresh_token', $refreshToken->getRefreshToken());
+        }
+        return $response;
     }
 
     public function onAuthenticationFailure(Request $request, AuthenticationException $exception): ?JsonResponse

@@ -148,7 +148,7 @@ class UsersController extends AbstractController
         // Envoi de l'email
         try {
             $email = (new Email())
-                ->from('no-reply@your-domain.com')
+                ->from('impression@newsoftit.com')
                 ->to($userEmail)
                 ->subject('Réinitialisation de votre mot de passe')
                 ->html($emailContent);

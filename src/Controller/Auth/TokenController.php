@@ -21,7 +21,7 @@ class TokenController extends AbstractController
     #[Route('/nsit-api/token/refresh',name:"api_refresh_token", methods:["POST"])]
     public function refreshToken(Request $request, JwtTokenService $jwtTokenService): Response
     {
-        dd('test');
+        dd('controller token');
 
         // Récupérer le refresh_token depuis les cookies
         $refreshToken = $request->cookies->get('refresh_token');

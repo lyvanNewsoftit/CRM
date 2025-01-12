@@ -21,6 +21,7 @@ class CheckAuthController extends AbstractController
     #[Route('/nsit-api/auth', name: 'check_auth', methods: ['GET'])]
     public function checkAuth(Request $request): Response
     {
+        dd($this->tokenManagementService->checkAuth($request));
         return $this->tokenManagementService->checkAuth($request);
     }
 }

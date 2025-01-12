@@ -4,7 +4,7 @@
 # Put parameters here that don't need to change on each machine where the app is deployed
 # https://symfony.com/doc/current/best_practices.html#use-parameters-for-application-configuration
 parameters:
-
+    timezone: '%env(APP_TIMEZONE)%'
 services:
     # default configuration for services in *this* file
     _defaults:
@@ -30,14 +30,16 @@ services:
     App\Security\Hasher\Sha256PasswordHasher:
         tags:
             - { name: security.user_password_hasher, alias: sha256 }
+    #Service pour authentification custom
     App\Security\CustomAuthenticator:
         arguments:
             $userProvider: '@security.user.provider.concrete.user_provider'
             $passwordEncoder: '@security.password_hasher'
-
+    #Service pour gérer l'expiration des token dans les cookies etc
     App\EventSubscriber\RemoveExpiredTokenSubscriber:
         arguments:
             $jwtManager: '@lexik_jwt_authentication.jwt_manager'
+            $entityManager: '@doctrine.orm.entity_manager'
         tags:
             - { name: 'kernel.event_subscriber' }
     lcobucci.jwt.decoder:
