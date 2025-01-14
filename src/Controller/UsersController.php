@@ -27,7 +27,7 @@ class UsersController extends AbstractController
 {
     private $passwordHasher;
 
-    public function __construct(Sha256PasswordHasher $passwordHasher, private TokenManementService $tokenManagementService, private EntityManagerInterface $entityManager, private UsersRepository $usersRepo,)
+    public function __construct(Sha256PasswordHasher $passwordHasher, private EntityManagerInterface $entityManager, private UsersRepository $usersRepo,)
     {
         $this->passwordHasher = $passwordHasher;
     }
@@ -78,8 +78,6 @@ class UsersController extends AbstractController
             return new JsonResponse(['error' => 'JWT Token not found'], Response::HTTP_UNAUTHORIZED);
         }
 
-
-        $state = $this->tokenManagementService->checkAuth($request);
         $users = $this->usersRepo->findAll();
         $usersJson = $serializer->serialize($users, 'json');
         return new JsonResponse($usersJson, Response::HTTP_OK, [], true);

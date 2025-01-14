@@ -2,6 +2,7 @@
 
 namespace App\Security;
 
+use App\Controller\Auth\Services\TwoFactorService;
 use App\Entity\Users;
 use App\Security\Hasher\Sha256PasswordHasher;
 use Doctrine\ORM\EntityManagerInterface;
@@ -11,6 +12,7 @@ use Symfony\Component\HttpFoundation\Cookie;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpFoundation\Session\SessionInterface;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 use Symfony\Component\Security\Core\Exception\CustomUserMessageAuthenticationException;
@@ -30,7 +32,7 @@ class CustomAuthenticator extends AbstractAuthenticator
     private UserPasswordHasherInterface $passwordEncoder;
 
 
-    public function __construct(private readonly EntityManagerInterface $entityManager, private readonly RefreshTokenGeneratorInterface $refreshTokenGenerator, private readonly Sha256PasswordHasher $passwordHasher, private readonly JwtTokenService $jwtTokenService, JWTTokenManagerInterface $jwtManager, UserProviderInterface $userProvider, UserPasswordHasherInterface $passwordEncoder)
+    public function __construct(private readonly TwoFactorService $twoFactorService, private readonly Sha256PasswordHasher $passwordHasher, JWTTokenManagerInterface $jwtManager, UserProviderInterface $userProvider, UserPasswordHasherInterface $passwordEncoder)
     {
         $this->jwtManager = $jwtManager;
         $this->userProvider = $userProvider;
@@ -50,6 +52,7 @@ class CustomAuthenticator extends AbstractAuthenticator
     public function authenticate(Request $request): Passport
     {
 
+
         // get the payload content
         $content = json_decode($request->getContent(), true);
 
@@ -63,6 +66,7 @@ class CustomAuthenticator extends AbstractAuthenticator
 
         $passport = new Passport(
             new UserBadge($email, function ($email) {
+
                 return $this->userProvider->loadUserByIdentifier($email);
             }),
             new CustomCredentials(
@@ -73,91 +77,27 @@ class CustomAuthenticator extends AbstractAuthenticator
                 $password
             )
         );
-
         return $passport;
     }
 
-    public function onAuthenticationSuccess(Request $request, TokenInterface $token, string $firewallName): ?JsonResponse
+
+    public function onAuthenticationSuccess(Request $request,  TokenInterface $token, string $firewallName): ?JsonResponse
     {
 
-        // Get the authenticated User
+        // Récupérer rememberMe dans le payload afin de le mettre en session pour savoir si oui ou non on crée un cookie frefreshtoken quin permettra de rester connecter beaucoup plus longtemps
+        $payload = $request->getPayload();
+        $rememberMe =$payload->get('rememberMe');
+        //Récupérer l'utilisateur
         $user = $token->getUser();
-        $rememberMe = $request->getPayload()->get('rememberMe');
 
-        if (!$user) {
-            return new JsonResponse([
-                'success' => false,
-                'message' => 'L\'utilisateur n\'existe pas.'
-            ], Response::HTTP_UNAUTHORIZED);
-        }
-
-        // generate the token with the custom service JwtTokenService
-        $jwt = $this->jwtTokenService->generateToken($user);
-// Initialisation des cookies
-        $refreshTokenCookie = null;
-
-        if ($rememberMe) {
-
-            $refreshToken = $this->refreshTokenGenerator->createForUserWithTtl(
-                $user,
-                time() + (3600 * 24 * 3)// durée de vie du refresh token 3 jours
-            );
-
-            // Sauvegarde du refresh token en base
-            $this->entityManager->persist($refreshToken);
-            $this->entityManager->flush();
-
-            // Création du cookie HTTP-only pour le refresh token
-            $refreshTokenCookie = Cookie::create(
-                'refresh_token', // Nom du cookie
-                $refreshToken->getRefreshToken(), // Valeur
-                time() + (3600 * 24 * 3), // Expiration : 3 jours
-                '/', // Path
-                null, // Domaine (null pour par défaut)
-                true, // Secure : HTTPS uniquement
-                true,
-                false, // Raw
-                Cookie::SAMESITE_NONE// SameSite policy
-            );
-
-
-        }
-
-
-        // création du cookie http only pour le token
-        $jwtCookie = Cookie::create(
-            'access_token', // Nom du cookie
-            $jwt, // Valeur du JWT
-            time() + (3600 * 2), // expiration 1heure: 3600 * 2 par rapport à lheure utc qui est en décalage de 1H
-            '/', // Path
-            null, // Domaine (null pour par défaut)
-            true, // Secure : HTTPS uniquement
-            true, // HttpOnly
-            false, // Raw
-            Cookie::SAMESITE_NONE // SameSite policy
-        );
-
-        // JSON Response with the token.
-        $response = new JsonResponse([
-            'success' => true,
-            //'token' => $jwt,
-            // 'refresh_token' => $refreshToken->getRefreshToken(),
-        ], Response::HTTP_OK);
-
-        if ($refreshTokenCookie) {
-            $response->headers->setCookie($refreshTokenCookie);
-        }
-
-        $response->headers->setCookie($jwtCookie);
-
-        // Créer une session pour y stocker le User ainsi que son refresh token pour pouvoir le retrouver lors de son expéritation et le supprimer de la base.
+        // Créer une session pour y stocker le User ainsi que le status de rememberMe.
         $session = $request->getSession();
         $session->set('user', $user);
+        $session->set('rememberMe', $rememberMe);
 
-        if ($refreshTokenCookie) {
-            $session->set('refresh_token', $refreshToken->getRefreshToken());
-        }
-        return $response;
+        //lancement de la fonction qui permet soit de créer un secret a stocker dans user et  générer un qrCode a scanner soit envoyer comme response qu'l faut directement le code 2FA avec authenticator
+       return $this->twoFactorService->generateQrCode($request, $token->getUser());
+
     }
 
     public function onAuthenticationFailure(Request $request, AuthenticationException $exception): ?JsonResponse

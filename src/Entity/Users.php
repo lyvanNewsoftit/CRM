@@ -4,12 +4,17 @@ namespace App\Entity;
 
 use App\Repository\UsersRepository;
 use Doctrine\ORM\Mapping as ORM;
+use Scheb\TwoFactorBundle\Model\Google\TwoFactorInterface;
+use Scheb\TwoFactorBundle\Model\Totp\TotpConfiguration;
+use Scheb\TwoFactorBundle\Model\Totp\TotpConfigurationInterface;
+use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: UsersRepository::class)]
-class Users implements UserInterface, PasswordAuthenticatedUserInterface
+#[UniqueEntity(fields: ['email'], message: ('Cet email est déjà utilisé, merci d\'en utiliser un autre.'))]
+class Users implements UserInterface, PasswordAuthenticatedUserInterface, TwoFactorInterface
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -23,12 +28,12 @@ class Users implements UserInterface, PasswordAuthenticatedUserInterface
     private ?string $email = null;
 
     #[ORM\Column(length: 255)]
-    #[Assert\length(min:5, max:20, minMessage: 'Le prénom doit avoir 5 caractères minimum.', maxMessage: 'Le prénom ne peut exéder 20 caractères.')]
+    #[Assert\length(min: 5, max: 20, minMessage: 'Le prénom doit avoir 5 caractères minimum.', maxMessage: 'Le prénom ne peut exéder 20 caractères.')]
     #[Assert\NotBlank(message: 'Le prénom doit être spécifié.')]
     private ?string $firstname = null;
 
     #[ORM\Column(length: 255)]
-    #[Assert\length(min:5, max:20, minMessage: 'Le nom doit avoir 5 caractères minimum.', maxMessage: 'Le nom ne peut exéder 20 caractères.')]
+    #[Assert\length(min: 5, max: 20, minMessage: 'Le nom doit avoir 5 caractères minimum.', maxMessage: 'Le nom ne peut exéder 20 caractères.')]
     #[Assert\NotBlank(message: 'Le nom doit être spcifié.')]
     private ?string $lastname = null;
 
@@ -45,7 +50,11 @@ class Users implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(nullable: true)]
     private ?\DateTimeImmutable $resetPasswordTokenExpiration = null;
 
-    public function __construct(){
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $totpSecret = null;
+
+    public function __construct()
+    {
         $this->setCreatedAt(new \DateTimeImmutable());
     }
 
@@ -159,4 +168,42 @@ class Users implements UserInterface, PasswordAuthenticatedUserInterface
 
         return $this;
     }
+
+    public function getGoogleAuthenticatorSecret(): ?string
+    {
+        return $this->totpSecret;
+    }
+
+    public function setGoogleAuthenticatorSecret(?string $totpSecret): static
+    {
+        $this->totpSecret = $totpSecret;
+
+        return $this;
+    }
+
+    public function isGoogleAuthenticatorEnabled(): bool
+    {
+        /*
+         * Cette méthode doit retourner un booléen. Si la 2FA (Google Authenticator) est toujours
+         * activée pour tous les utilisateurs,  retourner true dans cette méthode.*/
+        return true;
+    }
+
+    public function getGoogleAuthenticatorUsername(): string
+    {
+        // Utiliser l'email de l'utilisateur comme identifiant pour TOTP
+        return $this->getEmail();
+    }
+
+//    public function getTotpAuthenticationConfiguration(): TotpConfigurationInterface|null
+//    {
+//        // Retourne une configuration nécessaire pour TOTP, typiquement le secret de l'utilisateur.
+//
+//        return new TotpConfiguration(
+//            $this->getGoogleAuthenticatorSecret(),
+//            $this->getGoogleAuthenticatorUsername(),
+//            3600,
+//            6
+//        );
+//    }
 }

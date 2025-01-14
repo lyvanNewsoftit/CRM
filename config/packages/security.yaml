@@ -23,6 +23,11 @@ security:
                 password_path: password
                 success_handler: lexik_jwt_authentication.handler.authentication_success
                 failure_handler: lexik_jwt_authentication.handler.authentication_failure
+#            two_factor:
+#                # Préparer la vérification 2FA après une première connexion réussie
+#                prepare_on_login: true
+#                prepare_on_access_denied: true
+#                auth_code_parameter_name: authCode  # Name of the parameter for the two-factor authentication code
         dev:
             pattern: ^/(_(profiler|wdt)|css|images|js)/
             security: false
@@ -52,6 +57,7 @@ security:
         - { path: ^/nsit-api/new-password, roles: PUBLIC_ACCESS }
         - { path: ^/nsit-api/login_check, roles: IS_AUTHENTICATED_ANONYMOUSLY }
         - { path: ^/nsit-api/auth, roles: PUBLIC_ACCESS}
+        - { path: ^/nsit-api/check_2FA , roles: PUBLIC_ACCESS}
         - { path: ^/nsit-api/users, roles: PUBLIC_ACCESS, methods: [POST]}
         - { path: ^/nsit-api,       roles: IS_AUTHENTICATED_FULLY }
 

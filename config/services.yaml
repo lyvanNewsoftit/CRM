@@ -35,6 +35,7 @@ services:
         arguments:
             $userProvider: '@security.user.provider.concrete.user_provider'
             $passwordEncoder: '@security.password_hasher'
+
     #Service pour gérer l'expiration des token dans les cookies etc
     App\EventSubscriber\RemoveExpiredTokenSubscriber:
         arguments:
@@ -42,6 +43,8 @@ services:
             $entityManager: '@doctrine.orm.entity_manager'
         tags:
             - { name: 'kernel.event_subscriber' }
+
+
     lcobucci.jwt.decoder:
         class: lcobucci\JWT\Decoder\Decoder
         public: true
