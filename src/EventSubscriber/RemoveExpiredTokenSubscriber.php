@@ -117,6 +117,7 @@ class RemoveExpiredTokenSubscriber implements EventSubscriberInterface
 
         } else {
 
+            return 'test;';
             //création du cookie http only pour le token
             $jwtCookie = Cookie::create(
                 'access_token', // Nom du cookie

@@ -18,7 +18,7 @@ class TokenController extends AbstractController
     }
 
 
-    #[Route('/nsit-api/token/refresh',name:"api_refresh_token", methods:["POST"])]
+    #[Route('/nsit-api/token/refresh',name:"api_refresh_token", methods:["GET"])]
     public function refreshToken(Request $request, JwtTokenService $jwtTokenService): Response
     {
         dd('controller token');
