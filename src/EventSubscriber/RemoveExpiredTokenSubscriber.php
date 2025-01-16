@@ -33,6 +33,7 @@ class RemoveExpiredTokenSubscriber implements EventSubscriberInterface
     public function onKernelResponse(ResponseEvent $event)
     {
 
+
         $request = $event->getRequest();
         // Vérifie que la route correspond à `/token/refresh`
         if ($request->getPathInfo() !== '/nsit-api/token/refresh') {
@@ -95,8 +96,10 @@ class RemoveExpiredTokenSubscriber implements EventSubscriberInterface
         } else if ($response->getStatusCode() === 401 && isset($apiResponse->message) && ($apiResponse->message === 'Missing JWT Refresh Token' || $apiResponse->message === 'Invalid JWT Refresh Token')) {
 
             $session = $request->getSession();
+            // Récupération du token invalide
             $expiredRefreshToken = $session->get('refresh_token');
             $tokenToDeleteFromDatabase = $this->refreshTokenRepo->findOneBy(['refreshToken' => $expiredRefreshToken]);
+// si le token invalide existe
             if ($tokenToDeleteFromDatabase) {
                 $this->entityManager->remove($tokenToDeleteFromDatabase);
                 $this->entityManager->flush();
@@ -109,6 +112,8 @@ class RemoveExpiredTokenSubscriber implements EventSubscriberInterface
                 $response->headers->setCookie(new Cookie('PHPSESSID', '', time() - 3600, '/', null, true, true));
 
             }
+            //Si pas de token a supprimer de la base données on ferme quand même la session.
+            $response->headers->setCookie(new Cookie('PHPSESSID', '', time() - 3600, '/', null, true, true));
 
         } else {
 
