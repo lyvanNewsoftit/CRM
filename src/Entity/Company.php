@@ -2,7 +2,9 @@
 
 namespace App\Entity;
 
-use App\Repository\OrganizationRepository;
+use App\Repository\CompanyRepository;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
@@ -12,81 +14,95 @@ use Symfony\Component\Validator\Constraints\NotBlank;
 use Symfony\Component\Validator\Constraints\Regex;
 use Symfony\Component\Validator\Constraints as Assert;
 
-#[ORM\Entity(repositoryClass: OrganizationRepository::class)]
-#[UniqueEntity(fields:['siret'], message: 'Un compte avec ce siret est déjà enregistré.')]
-class Organization
+#[ORM\Entity(repositoryClass: CompanyRepository::class)]
+#[UniqueEntity(fields:['siret'], message: 'A Company with this Siret is already registered.')]
+class Company
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
-    #[Groups(['read:collection:organization'])]
+    #[Groups(['read:collection:company','read:item:company'])]
     private ?int $id = null;
 
     #[ORM\Column(length: 255)]
-    #[Groups(['read:collection:organization'])]
-    #[NotBlank(message: 'Le nom doit être spécifié.')]
-    #[Length(min: 3, max: 30, minMessage: 'Le nom doit avoit minimum 3 caractères.', maxMessage: 'Le no ne peut excéder 30 caractères.')]
+    #[Groups(['read:collection:company','read:item:company', 'read:item:user'])]
+    #[NotBlank(message: 'Company name must be specified.')]
+    #[Length(min: 3, max: 30, minMessage: 'Company name must be at least 3 characters long.', maxMessage: 'Company name cannot exceed 30 characters long.')]
     private ?string $name = null;
 
     #[ORM\Column(length: 255, nullable: true)]
-    #[Groups(['read:collection:organization'])]
+    #[Groups(['read:collection:company','read:item:company'])]
     private ?string $address = null;
 
     #[ORM\Column(length: 10)]
-    #[Groups(['read:collection:organization'])]
+    #[Groups(['read:collection:company','read:item:company'])]
+    #[Assert\NotBlank(message: 'Company postal code must be specified.')]
     private ?string $postalCode = null;
 
     #[ORM\Column(length: 255)]
-    #[Groups(['read:collection:organization'])]
+    #[Groups(['read:collection:company','read:item:company'])]
+    #[Assert\NotBlank(message: 'Company city must be specified.')]
     private ?string $city = null;
 
     #[ORM\Column(length: 10)]
-    #[Groups(['read:collection:organization'])]
-    #[Length(exactly: 10, exactMessage: 'Le numéro de téléphone doit comporter 10 chiffres.')]
-    #[Regex('/^\d+$/', message: 'Ce champ ne peut contenir que des chiffres.')]
+    #[Groups(['read:collection:company','read:item:company'])]
+    #[Length(exactly: 10, exactMessage: 'The Phone number must be 10 digits long.')]
+    #[Regex('/^\d+$/', message: 'This field can only contain numbers.')]
+    #[Assert\NotBlank(message: 'Company phone number must be specified.')]
     private ?string $phoneNumber = null;
 
     #[ORM\Column(length: 255)]
-    #[Groups(['read:collection:organization'])]
-    #[Assert\Length(max: 255, maxMessage: 'L\email ne peut exéder 255 caractères.')]
-    #[Assert\NotBlank(message: 'L\'email doit être spécifié.')]
-    #[Assert\Email(message: 'Merci de spécifier un email valide.')]
+    #[Groups(['read:collection:company','read:item:company'])]
+    #[Assert\Length(max: 255, maxMessage: 'Email cannot exceed 255 characters long.')]
+    #[Assert\NotBlank(message: 'Email must be specified.')]
+    #[Assert\Email(message: 'Please enter a valid email.')]
     private ?string $email = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
-    #[Groups(['read:collection:organization'])]
+    #[Groups(['read:item:company'])]
     private ?string $description = null;
 
     #[ORM\Column(length: 255)]
-    #[Groups(['read:collection:organization'])]
-    #[NotBlank(message: 'Le numéro Siret doit être spécifié.')]
+    #[Groups(['read:item:company', 'read:collection:company'])]
+    #[NotBlank(message: 'Siret number must be specified.')]
     private ?string $siret = null;
 
     #[ORM\Column(length: 255)]
-    #[Groups(['read:collection:organization'])]
-    #[NotBlank(message: 'Le numéro TVA doit être spécifié.')]
+    #[Groups(['read:item:company'])]
+    #[NotBlank(message: 'TVA number must be specified.')]
     private ?string $tvaIntra = null;
 
     #[ORM\Column(nullable: true)]
-    #[Groups(['read:collection:organization'])]
+    #[Groups(['read:collection:company', 'read:item:company'])]
     private ?float $salesRevenue = null;
 
     #[ORM\Column(nullable: true)]
-    #[Groups(['read:collection:organization'])]
-    #[Regex('/^\d+$/', message: 'Ce champ ne peut contenir que des chiffres.')]
+    #[Groups(['read:item:company'])]
+    #[Regex('/^\d+$/', message: 'This field can only contain numbers.')]
     private ?int $effectif = null;
 
     #[ORM\ManyToOne(inversedBy: 'organizations')]
-    #[Groups(['read:collection:organization'])]
+    #[Groups(['read:collection:company', 'read:item:company'])]
     #[ORM\JoinColumn(nullable: false)]
-    #[NotBlank(message: 'Le statut du Compte doit être spécifié.')]
+    #[NotBlank(message: 'Company status must be specified.')]
     private ?Status $status = null;
 
     #[ORM\ManyToOne(inversedBy: 'organizations')]
-    #[Groups(['read:collection:organization'])]
+    #[Groups(['read:collection:company', 'read:item:company'])]
     #[ORM\JoinColumn(nullable: false)]
-    #[NotBlank(message: 'Le type du Compte doit être spécifié.')]
-    private ?OrganizationType $type = null;
+    #[NotBlank(message: 'Company type must be specified.')]
+    private ?CompanyType $type = null;
+
+    /**
+     * @var Collection<int, Users>
+     */
+    #[ORM\OneToMany(targetEntity: Users::class, mappedBy: 'company')]
+    private Collection $users;
+
+    public function __construct()
+    {
+        $this->users = new ArrayCollection();
+    }
 
     public function getId(): ?int
     {
@@ -237,14 +253,44 @@ class Organization
         return $this;
     }
 
-    public function getType(): ?OrganizationType
+    public function getType(): ?CompanyType
     {
         return $this->type;
     }
 
-    public function setType(?OrganizationType $type): static
+    public function setType(?CompanyType $type): static
     {
         $this->type = $type;
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, Users>
+     */
+    public function getUsers(): Collection
+    {
+        return $this->users;
+    }
+
+    public function addUser(Users $user): static
+    {
+        if (!$this->users->contains($user)) {
+            $this->users->add($user);
+            $user->setCompany($this);
+        }
+
+        return $this;
+    }
+
+    public function removeUser(Users $user): static
+    {
+        if ($this->users->removeElement($user)) {
+            // set the owning side to null (unless already changed)
+            if ($user->getCompany() === $this) {
+                $user->setCompany(null);
+            }
+        }
 
         return $this;
     }

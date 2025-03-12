@@ -2,43 +2,53 @@
 
 namespace App\Entity;
 
+use App\Enum\UserRole;
 use App\Repository\UsersRepository;
 use Doctrine\ORM\Mapping as ORM;
 use Scheb\TwoFactorBundle\Model\Google\TwoFactorInterface;
-use Scheb\TwoFactorBundle\Model\Totp\TotpConfiguration;
-use Scheb\TwoFactorBundle\Model\Totp\TotpConfigurationInterface;
 use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
+use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: UsersRepository::class)]
-#[UniqueEntity(fields: ['email'], message: ('Cet email est déjà utilisé, merci d\'en utiliser un autre.'))]
+#[UniqueEntity(fields: ['email'], message: ('This Email already exist. Please enter an other one.'))]
 class Users implements UserInterface, PasswordAuthenticatedUserInterface, TwoFactorInterface
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(['read:item:user', 'read:collection:user'])]
     private ?int $idUser = null;
 
+    #[ORM\Column(type: 'json')]
+    #[Groups(['read:item:user', 'read:collection:user'])]
+    #[Assert\Choice(callback: [UserRole::class, 'getAvailableRoles'], multiple: true, message: 'Invalid role selected.')]
+    #[Assert\NotBlank(message: 'Role must be specified.')]
+    private array $roles = [UserRole::USER->value];
+
     #[ORM\Column(length: 255)]
-    #[Assert\Length(max: 255, maxMessage: 'L\email ne peut exéder 255 caractères.')]
-    #[Assert\NotBlank(message: 'L\'email doit être spécifié.')]
-    #[Assert\Email(message: 'Merci de spécifier un email valide.')]
+    #[Assert\Length(max: 255, maxMessage: 'Email cannot exceed 255 characters long.')]
+    #[Assert\NotBlank(message: 'Email must be specified.')]
+    #[Assert\Email(message: 'Please enter a valid email.')]
+    #[Groups(['read:item:user', 'read:collection:user'])]
     private ?string $email = null;
 
     #[ORM\Column(length: 255)]
-    #[Assert\length(min: 5, max: 20, minMessage: 'Le prénom doit avoir 5 caractères minimum.', maxMessage: 'Le prénom ne peut exéder 20 caractères.')]
-    #[Assert\NotBlank(message: 'Le prénom doit être spécifié.')]
+    #[Assert\length(min: 5, max: 20, minMessage: 'Firstname must be at least 5 characters long.', maxMessage: 'Firstname cannot exceed 20 characters long.')]
+    #[Assert\NotBlank(message: 'Firstname must be specified.')]
+    #[Groups(['read:item:user', 'read:collection:user'])]
     private ?string $firstname = null;
 
     #[ORM\Column(length: 255)]
-    #[Assert\length(min: 5, max: 20, minMessage: 'Le nom doit avoir 5 caractères minimum.', maxMessage: 'Le nom ne peut exéder 20 caractères.')]
-    #[Assert\NotBlank(message: 'Le nom doit être spcifié.')]
+    #[Assert\length(min: 5, max: 20, minMessage: 'Lastname must be at least 5 characters long', maxMessage: 'Lastname cannot exceed 20 characters long.')]
+    #[Assert\NotBlank(message: 'Lastname must be specified.')]
+    #[Groups(['read:item:user', 'read:collection:user'])]
     private ?string $lastname = null;
 
     #[ORM\Column(length: 255)]
-    #[Assert\NotBlank(message: 'Le mot de passe doit être spécifié.')]
+    #[Assert\NotBlank(message: 'password must be specified.')]
     private ?string $password = null;
 
     #[ORM\Column]
@@ -52,6 +62,11 @@ class Users implements UserInterface, PasswordAuthenticatedUserInterface, TwoFac
 
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $totpSecret = null;
+
+    #[ORM\ManyToOne(fetch: 'EAGER', inversedBy: 'users')]
+    #[Groups(['read:item:user', 'read:collection:user'])]
+    #[Assert\NotBlank(message: 'Company must be specified.')]
+    private ?Company $company = null;
 
     public function __construct()
     {
@@ -206,4 +221,20 @@ class Users implements UserInterface, PasswordAuthenticatedUserInterface, TwoFac
 //            6
 //        );
 //    }
+
+public function getCompany(): ?Company
+{
+    return $this->company;
+}
+
+public function setCompany(?Company $company): static
+{
+    $this->company = $company;
+
+    return $this;
+}
+//public function __toString(): string
+//{
+//   return $this->getEmail();
+//}
 }

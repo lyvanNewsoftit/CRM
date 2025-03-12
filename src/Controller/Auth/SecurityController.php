@@ -9,10 +9,12 @@ use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use OTPHP\TOTP;
 use Scheb\TwoFactorBundle\Security\TwoFactor\Provider\Google\GoogleAuthenticatorInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
 use Symfony\Component\HttpFoundation\Cookie;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpFoundation\Session\SessionInterface;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Core\User\UserInterface;
 
@@ -23,7 +25,7 @@ class SecurityController extends AbstractController
     {
     }
 
-    #[Route('/nsit-api/login_check', name: 'login_check', methods: ['POST'])]
+    #[Route('/crm-api/login_check', name: 'login_check', methods: ['POST'])]
     public function login(JWTTokenManagerInterface $jwtManager, UserInterface $user)
     {
         /*
@@ -31,8 +33,29 @@ class SecurityController extends AbstractController
          */
     }
 
-    #[Route('/nsit-api/check_2FA', name: 'check_2FA', methods: ['POST'])]
-    public function check2Fa(Request $request, GoogleAuthenticatorInterface $googleAuthenticator, JwtTokenService $jwtTokenService, RefreshTokenGeneratorInterface $refreshTokenGenerator)
+    #[Route('/crm-api/logout', name: 'logout', methods: ['POST'])]
+    public function logout(JWTTokenManagerInterface $jwtManager, UserInterface $user, Request $request, SessionInterface $session){
+        $session = $request->getSession();
+        $session->clear();
+
+        $response = new JsonResponse([
+            'success' => true,
+            'message' => 'You have been logged out.',
+        ], Response::HTTP_OK);
+
+        // Supprimer les cookies en les définissant avec une expiration dans le passé
+        $response->headers->setCookie(
+            Cookie::create('access_token', '', time() - 3600, '/', null, true, true, false, Cookie::SAMESITE_NONE)
+        );
+        $response->headers->setCookie(
+            Cookie::create('refresh_token', '', time() - 3600, '/crm-api/token/refresh', null, true, true, false, Cookie::SAMESITE_NONE)
+        );
+
+        return $response;
+    }
+
+    #[Route('/crm-api/check_2FA', name: 'check_2FA', methods: ['POST'])]
+    public function check2Fa(ParameterBagInterface $params, Request $request, GoogleAuthenticatorInterface $googleAuthenticator, JWTTokenManagerInterface $jwtTokenService, RefreshTokenGeneratorInterface $refreshTokenGenerator)
     {
         $session = $request->getSession();
         $user = $session->get('user');
@@ -61,7 +84,10 @@ class SecurityController extends AbstractController
 //        dd('security', $isAuthCodeValid);
 
         // generate the token with the custom service JwtTokenService
-        $jwt = $jwtTokenService->generateToken($user);
+        // Appel du listerner JWTreatedListener afin de rajouter des données custom dans le token
+
+        $jwt = $jwtTokenService->create($user);
+
         $refreshTokenCookie = null;
 
         if ($isAuthCodeValid === true) {
@@ -81,7 +107,7 @@ class SecurityController extends AbstractController
                     'refresh_token', // Nom du cookie
                     $refreshToken->getRefreshToken(), // Valeur
                     time() + (3600 * 24 * 3), // Expiration : 3 jours
-                    '/', // Path
+                    '/crm-api/token/refresh', // Path
                     null, // Domaine (null pour par défaut)
                     true, // Secure : HTTPS uniquement
                     true,
@@ -106,12 +132,19 @@ class SecurityController extends AbstractController
                 Cookie::SAMESITE_NONE // SameSite policy
             );
 
+            // Préparer le hash des role
+
+            $salt = $params->get('app.role_salt');
+            $hashedRoles = array_map(fn($role) => hash_hmac('sha256', $role, $salt), $user->getRoles());
+
             // JSON Response
             $response = new JsonResponse([
                 'success' => true,
-                'message' => 'Authentification réussie',
+                'message' => 'Successful authentication.',
                 //'token' => $jwt,
-                // 'refresh_token' => $refreshToken->getRefreshToken(),
+                //'refresh_token' => $refreshToken->getRefreshToken(),
+                'roles' => $hashedRoles,
+                'user' => $user->getUserIdentifier()
             ], Response::HTTP_OK);
 
             if ($refreshTokenCookie) {
@@ -127,14 +160,14 @@ class SecurityController extends AbstractController
         } else {
             return new JsonResponse([
                 'success' => false,
-                'message' => 'Code d\'authentification invalide',
+                'message' => 'Invalid Auth Code.',
                 //'token' => $jwt,
                 // 'refresh_token' => $refreshToken->getRefreshToken(),
             ], Response::HTTP_UNAUTHORIZED);
         }
 
 
-        dd($response, $session);
+
     }
 
 }

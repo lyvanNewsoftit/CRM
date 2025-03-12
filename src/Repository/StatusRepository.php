@@ -19,13 +19,19 @@ class StatusRepository extends ServiceEntityRepository
 
     public function findByInvolvedTable(string $name): array
     {
-        $involvedStatusArray = [];
+        $involvedStatusArray = []; // Ce tableau contiendra les statuts associés à une table donnée (par exemple, 'Company').
+
+        //  Requête SQL qui cherche des statuts dans la table 'status' qui sont associés à une table spécifique
+        // Elle utilise une sous-requête pour analyser les éléments JSON dans la colonne 'involved_table'.
         $sql = "SELECT id, name, involved_table FROM status WHERE EXISTS(SELECT 1 FROM json_array_elements_text(status.involved_table) AS elem WHERE elem.value= :value)";
         $query = $this->entityManager->getConnection()->prepare($sql);
         $query->bindValue('value', $name);
         $results =$query->executeQuery()->fetchAllAssociative();
+
+
         foreach ($results as $result) {
             $involvedStatusArray[$result['id']]['id'] = $result['id'];
+
             if($involvedStatusArray[$result['id']]){
                 $involvedStatusArray[$result['id']]['name'] = $result['name'];
             }

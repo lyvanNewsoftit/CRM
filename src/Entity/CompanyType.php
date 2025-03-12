@@ -2,40 +2,43 @@
 
 namespace App\Entity;
 
-use App\Repository\OrganizationTypeRepository;
+use App\Repository\CompanyTypeRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Serializer\Attribute\Groups;
 
-#[ORM\Entity(repositoryClass: OrganizationTypeRepository::class)]
-class OrganizationType
+#[ORM\Entity(repositoryClass: CompanyTypeRepository::class)]
+class CompanyType
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(['read:collection:company'])]
     private ?int $id = null;
 
     #[ORM\Column(length: 255)]
+    #[Groups(['read:collection:company', 'read:item:company'])]
     private ?string $label = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $description = null;
 
     /**
-     * @var Collection<int, Organization>
+     * @var Collection<int, Company>
      */
-    #[ORM\OneToMany(targetEntity: Organization::class, mappedBy: 'type')]
-    private Collection $organizations;
+    #[ORM\OneToMany(targetEntity: Company::class, mappedBy: 'type')]
+    private Collection $company;
 
     /**
-     * @var Collection<int, Organization>
+     * @var Collection<int, Company>
      */
 
 
     public function __construct()
     {
-        $this->organizations = new ArrayCollection();
+        $this->company = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -68,29 +71,29 @@ class OrganizationType
     }
 
     /**
-     * @return Collection<int, Organization>
+     * @return Collection<int, Company>
      */
     public function getOrganizations(): Collection
     {
-        return $this->organizations;
+        return $this->company;
     }
 
-    public function addOrganization(Organization $organization): static
+    public function addOrganization(Company $company): static
     {
-        if (!$this->organizations->contains($organization)) {
-            $this->organizations->add($organization);
-            $organization->setType($this);
+        if (!$this->company->contains($company)) {
+            $this->company->add($company);
+            $company->setType($this);
         }
 
         return $this;
     }
 
-    public function removeOrganization(Organization $organization): static
+    public function removeOrganization(Company $company): static
     {
-        if ($this->organizations->removeElement($organization)) {
+        if ($this->company->removeElement($company)) {
             // set the owning side to null (unless already changed)
-            if ($organization->getType() === $this) {
-                $organization->setType(null);
+            if ($company->getType() === $this) {
+                $company->setType(null);
             }
         }
 

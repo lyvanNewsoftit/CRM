@@ -4,13 +4,15 @@ namespace App\Controller;
 
 // src/Controller/UserController.php
 
-namespace App\Controller;
+namespace App\Controller\Users;
 
 use App\Controller\Auth\Services\TokenManementService;
 use App\Entity\Users;
+use App\Repository\CompanyRepository;
 use App\Repository\UsersRepository;
 use App\Security\Hasher\Sha256PasswordHasher;
 use Doctrine\ORM\EntityManagerInterface;
+use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -18,6 +20,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\Mime\Email;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
 use Symfony\Component\Serializer\SerializerInterface;
 
 use Symfony\Component\Validator\Validator\ValidatorInterface;
@@ -27,7 +30,7 @@ class UsersController extends AbstractController
 {
     private $passwordHasher;
 
-    public function __construct(Sha256PasswordHasher $passwordHasher, private EntityManagerInterface $entityManager, private UsersRepository $usersRepo,)
+    public function __construct(Sha256PasswordHasher $passwordHasher, private readonly EntityManagerInterface $entityManager, private readonly UsersRepository $usersRepo, private readonly CompanyRepository $companyRepo)
     {
         $this->passwordHasher = $passwordHasher;
     }
@@ -35,7 +38,7 @@ class UsersController extends AbstractController
     /**
      * @Route("/user/create", name="user_create")
      */
-    #[Route('/nsit-api/users', name: 'create_users', methods: ['POST'])]
+    #[Route('/crm-api/users', name: 'create_users', methods: ['POST'])]
     public function createUser(Request $request, EntityManagerInterface $entityManager, ValidatorInterface $validator, Sha256PasswordHasher $passwordHasher): JsonResponse
     {
 
@@ -48,7 +51,7 @@ class UsersController extends AbstractController
         $user->setFirstname($payload->get('firstname') ?? '');
         $user->setLastname($payload->get('lastname') ?? '');
         $user->setPassword($payload->get('password') ? $passwordHasher->hashPassword($user, $payload->get('password')) : '');
-
+        $user->setCompany($this->companyRepo->find($payload->get('company')));
         $violations = $validator->validate($user);
         $errorsValidation = [];
 
@@ -64,13 +67,14 @@ class UsersController extends AbstractController
         $entityManager->persist($user);
         $entityManager->flush();
 
-        return new JsonResponse('Utilisateur créé avec succès', Response::HTTP_CREATED);
+        return new JsonResponse('User has been created.', Response::HTTP_CREATED);
     }
 
 
-    #[Route('/nsit-api/users', name: 'get_users', methods: ['GET'])]
-    public function getUsers(Request $request, EntityManagerInterface $entityManager, SerializerInterface $serializer): JsonResponse
+    #[Route('/crm-api/users', name: 'get_users', methods: ['GET'])]
+    public function getUsers(Request $request, EntityManagerInterface $entityManager, SerializerInterface $serializer, TokenStorageInterface $tokenManager): JsonResponse
     {
+
         // Récupérer le JWT à partir du cookie HttpOnly
         $jwtToken = $request->cookies->get('access_token');
 
@@ -78,12 +82,28 @@ class UsersController extends AbstractController
             return new JsonResponse(['error' => 'JWT Token not found'], Response::HTTP_UNAUTHORIZED);
         }
 
+
+        // Envoie des paramètre nécessaires au filtre company_filter.
+        $companyFilter = $entityManager->getFilters()->getFilter('company_filter');
+        $companyId = $tokenManager->getToken()->getUser()->getCompany()->getId();
+        $userRole = $tokenManager->getToken()->getUser()->getRoles();
+
+        if(in_array('ROLE_SUPER_ADMIN', $userRole)) {
+            $companyFilter->setParameter('ROLE_SUPER_ADMIN', 'ROLE_SUPER_ADMIN');
+        }
+
+        $companyFilter->setParameter('companyId', $companyId);
+
+
+
         $users = $this->usersRepo->findAll();
-        $usersJson = $serializer->serialize($users, 'json');
+
+        $usersJson = $serializer->serialize($users, 'json', ['groups' => ['read:collection:user', 'read:item:user']]);
+
         return new JsonResponse($usersJson, Response::HTTP_OK, [], true);
     }
 
-    #[Route('/nsit-api/users/reset-password', name: 'users_reset_password', methods: ['POST'])]
+    #[Route('/crm-api/users/reset-password', name: 'users_reset_password', methods: ['POST'])]
     public function resetPassword(Request $request, MailerInterface $mailer, Environment $twig): JsonResponse
     {
         $payload = $request->getPayload();
@@ -91,7 +111,7 @@ class UsersController extends AbstractController
 
         if (!$userEmail) {
             return new JsonResponse(
-                ['success' => false, 'message' => 'L\'Email doit être spécifié.'],
+                ['success' => false, 'message' => 'Email is required.'],
                 Response::HTTP_BAD_REQUEST
             );
         }
@@ -100,7 +120,7 @@ class UsersController extends AbstractController
 
         if (!$user) {
             return new JsonResponse(
-                ['success' => false, 'message' => 'Aucun utilisateur trouvé.'],
+                ['success' => false, 'message' => 'User not found.'],
                 Response::HTTP_NOT_FOUND
             );
         }
@@ -120,7 +140,7 @@ class UsersController extends AbstractController
         } catch (\Exception $e) {
             return new JsonResponse([
                 'success' => false,
-                'message' => 'Erreur lors de la génération du token.',
+                'message' => 'Error when trying to generate token.',
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
 
@@ -139,34 +159,34 @@ class UsersController extends AbstractController
         } catch (\Twig\Error\Error $e) {
             return new JsonResponse([
                 'success' => false,
-                'message' => 'Erreur lors de la génération de l\'email : ' . $e->getMessage(),
+                'message' => 'Error when trying to generate email' . $e->getMessage(),
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
 
         // Envoi de l'email
         try {
             $email = (new Email())
-                ->from('impression@newsoftit.com')
+                ->from('briefmaster')
                 ->to($userEmail)
-                ->subject('Réinitialisation de votre mot de passe')
+                ->subject('Rset your password')
                 ->html($emailContent);
 
             $mailer->send($email);
         } catch (\Symfony\Component\Mailer\Exception\TransportExceptionInterface $e) {
             return new JsonResponse([
                 'success' => false,
-                'message' => 'Erreur lors de l\'envoi de l\'email : ' . $e->getMessage(),
+                'message' => 'Error when trying to send email ' . $e->getMessage(),
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
 
         return new JsonResponse([
             'success' => true,
-            'message' => 'Un email va vous être envoyé pour réinitialiser le mot de passe.',
+            'message' => 'An email will be sent to you to reset the password.',
         ]);
     }
 
-    #[Route('/nsit-api/users/new-password', name: 'users_new_password', methods: ['POST'])]
-    public function setNewPassword(Request $request, Sha256PasswordHasher $passwordHasher)
+    #[Route('/crm-api/users/new-password', name: 'users_new_password', methods: ['POST'])]
+    public function setNewPassword(Request $request, Sha256PasswordHasher $passwordHasher): JsonResponse
     {
         $payload = $request->getPayload();
         $newPassword = $payload->get('password');
@@ -180,9 +200,11 @@ class UsersController extends AbstractController
         $this->entityManager->persist($user);
         $this->entityManager->flush();
 
-        return new JsonResponse(['success' => true, 'message' => 'Mot de passe réinitialiser.']);
+        return new JsonResponse(['success' => true, 'message' => 'Password has been reset.'], Response::HTTP_OK);
 
 
     }
+
+
 
 }

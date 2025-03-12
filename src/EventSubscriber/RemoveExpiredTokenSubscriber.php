@@ -32,11 +32,10 @@ class RemoveExpiredTokenSubscriber implements EventSubscriberInterface
 
     public function onKernelResponse(ResponseEvent $event)
     {
-
-
         $request = $event->getRequest();
+
         // Vérifie que la route correspond à `/token/refresh`
-        if ($request->getPathInfo() !== '/nsit-api/token/refresh') {
+        if ($request->getPathInfo() !== '/crm-api/token/refresh') {
             return;
         }
 
@@ -45,38 +44,6 @@ class RemoveExpiredTokenSubscriber implements EventSubscriberInterface
 
         // Vérifie que le token est expiré (401) et la réponse a pour message 'Expired JWT Token'
         if ($response->getStatusCode() === 401 && isset($apiResponse->message) && $apiResponse->message === 'Expired JWT Token') {
-            // Récupérer le jeton depuis les cookies
-            $accessToken = $request->cookies->get('access_token');
-
-            // Vérifier si le jeton est valide (pas vide)
-            /*    if ($accessToken) {
-                    try {
-                        // Créer un parser avec un encoder Jose
-                        $parser = new Parser(new JoseEncoder());
-
-                        // Décoder le jeton pour récupérer le payload
-                        $token = $parser->parse($accessToken);
-
-                        // Accéder aux claims du token
-                        $claims = $token->claims();
-
-                        // Vérifier si le claim 'username' est non nul
-                        if (null !== $claims->get('username')) {
-                            $username = $claims->get('username');
-
-                            // Récupérer l'utilisateur à partir du nom d'utilisateur
-                            $user = $this->entityManager->getRepository(Users::class)->findOneBy(['email' => $username]);
-
-                            if ($user) {
-
-                                // Effectuer des actions supplémentaires avec l'utilisateur si nécessaire
-                            }
-                        }
-                    } catch (\Exception $e) {
-                        // Si une erreur se produit lors du décodage du jeton, ignorer l'erreur
-                        // Tu peux ajouter des logs ici pour plus de détails sur l'erreur si nécessaire
-                    }
-                }*/
 
             //suppression ancien access_token
             $jwtCookie = Cookie::create(
@@ -99,7 +66,7 @@ class RemoveExpiredTokenSubscriber implements EventSubscriberInterface
             // Récupération du token invalide
             $expiredRefreshToken = $session->get('refresh_token');
             $tokenToDeleteFromDatabase = $this->refreshTokenRepo->findOneBy(['refreshToken' => $expiredRefreshToken]);
-// si le token invalide existe
+            // si le token invalide existe
             if ($tokenToDeleteFromDatabase) {
                 $this->entityManager->remove($tokenToDeleteFromDatabase);
                 $this->entityManager->flush();
@@ -107,17 +74,21 @@ class RemoveExpiredTokenSubscriber implements EventSubscriberInterface
                 // Suppression des informations dans la session
                 $session->remove('refresh_token'); // Supprime le refresh token
                 $session->remove('user'); // Supprime les informations utilisateur
+                $session->remove('company');
+                $session->remove('role');
 
                 // Expiration du cookie PHPSESSID pour le supprimer
                 $response->headers->setCookie(new Cookie('PHPSESSID', '', time() - 3600, '/', null, true, true));
 
             }
             //Si pas de token a supprimer de la base données on ferme quand même la session.
+            $session->remove('refresh_token'); // Supprime le refresh token
+            $session->remove('user'); // Supprime les informations utilisateur
+            $session->remove('company');
+            $session->remove('role');
             $response->headers->setCookie(new Cookie('PHPSESSID', '', time() - 3600, '/', null, true, true));
 
         } else {
-
-            return 'test;';
             //création du cookie http only pour le token
             $jwtCookie = Cookie::create(
                 'access_token', // Nom du cookie
@@ -130,11 +101,8 @@ class RemoveExpiredTokenSubscriber implements EventSubscriberInterface
                 false, // Raw
                 Cookie::SAMESITE_NONE // SameSite policy
             );
-
             $response->headers->setCookie($jwtCookie);
         }
-
-
         // return new JsonResponse(['api response' => $apiResponse, 'cookie' => $request->cookies]);
     }
 

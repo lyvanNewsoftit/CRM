@@ -42,10 +42,10 @@ class CustomAuthenticator extends AbstractAuthenticator
 
     public function supports(Request $request): ?bool
     {
-        /* return true if the path is /nsit-api/login_check and the method is POST
+        /* return true if the path is /crm-api/login_check and the method is POST
         so the script can move on authenticate method
         */
-        return $request->getPathInfo() === '/nsit-api/login_check' && $request->getMethod() === 'POST';
+        return $request->getPathInfo() === '/crm-api/login_check' && $request->getMethod() === 'POST';
 
     }
 
@@ -89,10 +89,16 @@ class CustomAuthenticator extends AbstractAuthenticator
         $rememberMe =$payload->get('rememberMe');
         //Récupérer l'utilisateur
         $user = $token->getUser();
+        $role = $user->getRoles();
+
+        //Récupérer la company
+        $company = $user->getCompany();
 
         // Créer une session pour y stocker le User ainsi que le status de rememberMe.
         $session = $request->getSession();
         $session->set('user', $user);
+        $session->set('company', $company);
+        $session->set('roles', $role);
         $session->set('rememberMe', $rememberMe);
 
         //lancement de la fonction qui permet soit de créer un secret a stocker dans user et  générer un qrCode a scanner soit envoyer comme response qu'l faut directement le code 2FA avec authenticator

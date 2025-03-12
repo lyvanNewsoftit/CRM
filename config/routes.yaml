@@ -4,6 +4,6 @@ controllers:
         namespace: App\Controller
     type: attribute
 api_refresh_token:
-    path: /nsit-api/token/refresh
+    path: /crm-api/token/refresh
     #defaults: { _controller: App\Controller\Auth\Services\RefreshTokenSecurityCookieService:refresh }
     methods: [ POST ]

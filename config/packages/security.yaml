@@ -12,13 +12,13 @@ security:
         users_in_memory: { memory: null }
     firewalls:
         login:
-            pattern: ^/nsit-api/login
+            pattern: ^/crm-api/login
             custom_authenticator: App\Security\CustomAuthenticator
             stateless: true
             provider: user_provider
             json_login:
                 provider: user_provider
-                check_path: /nsit-api/login_check
+                check_path: /crm-api/login_check
                 username_path: email
                 password_path: password
                 success_handler: lexik_jwt_authentication.handler.authentication_success
@@ -32,13 +32,13 @@ security:
             pattern: ^/(_(profiler|wdt)|css|images|js)/
             security: false
         api:
-            pattern: ^/nsit-api
+            pattern: ^/crm-api
             stateless: true
             provider: user_provider
             entry_point: jwt
             jwt: ~
             refresh_jwt:
-                check_path: /nsit-api/token/refresh
+                check_path: /crm-api/token/refresh
 
         main:
             lazy: true
@@ -53,13 +53,13 @@ security:
     # Easy way to control access for large sections of your site
     # Note: Only the *first* access control that matches will be used
     access_control:
-        - { path: ^/nsit-api/reset-password, roles: PUBLIC_ACCESS }
-        - { path: ^/nsit-api/new-password, roles: PUBLIC_ACCESS }
-        - { path: ^/nsit-api/login_check, roles: IS_AUTHENTICATED_ANONYMOUSLY }
-        - { path: ^/nsit-api/auth, roles: PUBLIC_ACCESS}
-        - { path: ^/nsit-api/check_2FA , roles: PUBLIC_ACCESS}
-        - { path: ^/nsit-api/users, roles: PUBLIC_ACCESS, methods: [POST]}
-        - { path: ^/nsit-api,       roles: IS_AUTHENTICATED_FULLY }
+        - { path: ^/crm-api/reset-password, roles: PUBLIC_ACCESS }
+        - { path: ^/crm-api/new-password, roles: PUBLIC_ACCESS }
+        - { path: ^/crm-api/login_check, roles: IS_AUTHENTICATED_ANONYMOUSLY }
+        - { path: ^/crm-api/auth, roles: PUBLIC_ACCESS}
+        - { path: ^/crm-api/check_2FA , roles: PUBLIC_ACCESS}
+        - { path: ^/crm-api/users, roles: PUBLIC_ACCESS, methods: [POST]}
+        - { path: ^/crm-api,       roles: IS_AUTHENTICATED_FULLY }
 
 when@test:
     security:

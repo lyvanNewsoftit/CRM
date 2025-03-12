@@ -17,22 +17,23 @@ class CheckAuthController extends AbstractController
     {
     }
 
-    #[Route('/nsit-api/auth', name: 'check_auth', methods: ['GET'])]
+    #[Route('/crm-api/auth', name: 'check_auth', methods: ['GET'])]
     public function checkAuth(Request $request, SessionInterface $session): JsonResponse
     {
         $session= $request->getSession();
         $user = $session->get('user');
         $PHPSESSID = $request->cookies->get('PHPSESSID');
 
-        if(!$user && !$PHPSESSID){
+        if(!$user || !$PHPSESSID){
             return new JsonResponse([
                 'success' => false,
-                'message' => 'Aucun utilisateur authentifié.'
+                'message' => 'No authenticated users.'
             ], Response::HTTP_UNAUTHORIZED, [], false);
         } else {
             return new JsonResponse([
                 'success' => true,
-                'message' => 'Utilisateur authentifié.'
+                'message' => 'Authenticated user.',
+                'user' => $user->getUserIdentifier()
             ], Response::HTTP_OK, [], false);
         }
     }

@@ -1,0 +1,32 @@
+[
+    {
+        "name": "Compte 591",
+        "address": "309, avenue de Julien",
+        "postalCode": 93769,
+        "city": "Torres",
+        "phoneNumber": "0612345678",
+        "email": "fernandesmathilde@noos.fr",
+        "description": "Terrible selon bas rejoindre tant ordre alors.",
+        "siret": 9256874074,
+        "tvaIntra": 216442,
+        "salesRevenue": 185432,
+        "effectif": 49,
+        "status": 4,
+        "type": 4
+    },
+    {
+        "name": "Compte 254",
+        "address": "5, rue Louise Philippe",
+        "postalCode": 62276,
+        "city": "Chartier",
+        "phoneNumber": "0612345678",
+        "email": "gilbert19@garcia.com",
+        "description": "Pourquoi vif user quant à dessiner très.",
+        "siret": 8475371182,
+        "tvaIntra": 791680,
+        "salesRevenue": 183477,
+        "effectif": 386,
+        "status": 1,
+        "type": 4
+    }
+]
